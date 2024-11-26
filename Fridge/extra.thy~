@@ -1,0 +1,5 @@
+theory extra
+imports FridgeTheory
+begin
+
+end
