@@ -40,13 +40,14 @@ lemma ltime_le_toEnvNum:
   apply(induction s)
          apply(auto)
   done
+
 lemma toEnvNum_getPstate:
 "toEnvNum s s' < ltime s' p div timeStep \<Longrightarrow> getPstate s p = getPstate s' p"
   apply (induction s' arbitrary:s)
   apply auto
   apply (metis Suc_eq_plus1 getPstate.simps(2) not_less_eq)
   using getPstate.simps apply presburger+
-done
+  done
 
 lemma inter_toEnvNum_getPstate:
 "toEnvNum s s' < ltime s' p div timeStep \<and> substate s s'' \<and> substate s'' s'\<Longrightarrow> toEnvNum s'' s' < ltime s' p div timeStep"

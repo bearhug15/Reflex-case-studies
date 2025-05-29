@@ -1,0 +1,22 @@
+theory SmartLighting_VC328
+	imports SmartLightingTheory Requirements
+begin
+lemma
+assumes base_inv:"inv(st0)"
+	and st1:"st1=(setVarBool st0 ''inp_1'' inp_1)"
+	and st2:"st2=(setVarBool st1 ''inp_0'' inp_0)"
+	and st2_state:"getPstate st2 ''Init''=''error''"
+	and st2_state:"getPstate st2 ''Motion''=''movement''"
+	and st2_condition_414:"(getVarBool st2 ''inp_0'')"
+	and st3:"st3=reset st2"
+	and st3_condition_415:"(ltime st3 ''Motion'' \<ge> 300000)"
+	and st4:"st4=(setVarBool st3 ''_turnedOn'' False)"
+	and st5:"st5=setPstate st4 ''Motion'' ''noMovement''"
+	and st5_state:"getPstate st5 ''Lighting''=''earlyMorning''"
+	and st5_condition_418:"(getVarBool st5 ''_turnedOn'')"
+	and st6:"st6=(setVarBool st5 ''out_1'' True)"
+	and st6_condition_420:"(ltime st6 ''Lighting'' < 0t30m)"
+	and st7:"st7=toEnv st6"
+	and st_final:"st_final=st7"
+shows "inv(st_final)"
+end

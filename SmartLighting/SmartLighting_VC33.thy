@@ -1,0 +1,27 @@
+theory SmartLighting_VC33
+	imports SmartLightingTheory Requirements
+begin
+lemma
+assumes base_inv:"inv(st0)"
+	and st1:"st1=(setVarBool st0 ''inp_1'' inp_1)"
+	and st2:"st2=(setVarBool st1 ''inp_0'' inp_0)"
+	and st2_state:"getPstate st2 ''Init''=''init''"
+	and st3:"st3=setPstate st2 ''Lighting'' ''night''"
+	and st4:"st4=setPstate st3 ''Init'' ''stop''"
+	and st4_state:"getPstate st4 ''Motion''=''noMovement''"
+	and st4_condition_23:"(\<not> ((getVarBool (setVarBool st4 ''inp_1'' False) ''inp_0'') \<and> (getVarBool (setVarBool st4 ''inp_1'' False) ''inp_1'')))"
+	and st5:"st5=(setVarBool st4 ''inp_1'' False)"
+	and st5_state:"getPstate st5 ''Lighting''=''evening''"
+	and st6:"st6=(setVarBool st5 ''out_0'' False)"
+	and st6_condition_43:"(\<not> (getVarBool st6 ''_turnedOn''))"
+	and st7:"st7=(setVarBool st6 ''out_1'' False)"
+	and st7_condition_44:"(ltime st7 ''Lighting'' \<ge> 0t6h)"
+	and st8:"st8=(setVarBool st7 ''out_1'' False)"
+	and st9:"st9=(setVarInt st8 ''out_2'' 0)"
+	and st10:"st10=(setVarBool st9 ''_turnedOn'' False)"
+	and st11:"st11=setPstate st10 ''Motion'' ''stop''"
+	and st12:"st12=setPstate st11 ''Lighting'' ''night''"
+	and st13:"st13=toEnv st12"
+	and st_final:"st_final=st13"
+shows "inv(st_final)"
+end

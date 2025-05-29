@@ -1,0 +1,39 @@
+theory Microgrid_VC153
+imports MicrogridTheory
+begin
+
+lemma
+ assumes base_inv:"(inv st0)"
+ and st1:"(st1=(setVarReal st0 ''Pwec'' Pwec))"
+ and st2:"(st2=(setVarReal st1 ''SOC'' SOC))"
+ and st3:"(st3=(setVarBool st2 ''CycleCh'' CycleCh))"
+ and st4:"(st4=(setVarReal st3 ''Pl'' Pl))"
+ and st4_MainController_state:"(getPstate st4 ''MainController'')=''control''"
+ and st4_if1:"((getVarReal st4 ''Pwec'') > (getVarReal st4 ''Pl''))=False"
+ and st5:"(st5=(setPstate st4 ''RAEScharging'' ''''stop''''))"
+ and st6:"(st6=(setVarReal st5 ''RAESch'' (real 0)))"
+ and st6_if1:"((getVarReal st6 ''SOC'') > 0.2)=False"
+ and st7:"(st7=(setVarReal st6 ''RAESdisch'' (real 0)))"
+ and st8:"(st8=(setPstate st7 ''RAESdischarging'' ''''stop''''))"
+ and st8_if24:"(getPstate st8 ''GeneratorWork'' = ''stop'')=True"
+ and st9:"(st9=(setPstate st8 ''GeneratorWork'' ''control''))"
+ and st9_RAEScharging_state:"(getPstate st9 ''RAEScharging'')=''control''"
+ and st9_if48:"(((getVarReal st9 ''SOC'') < (real 1)) \<and> (((getVarReal st9 ''Pwec'') - (getVarReal st9 ''Pl'')) > 250))=True"
+ and st9_if50:"(((getVarReal st9 ''Pwec'') - (getVarReal st9 ''Pl'')) < 550)=False"
+ and st10:"(st10=(setVarReal st9 ''RAESch'' 550))"
+ and st11:"(st11=(setVarReal st10 ''Pwec_curt'' (((getVarReal st10 ''Pwec'') - (getVarReal st10 ''Pl'')) - 550)))"
+ and st11_RAESdischarging_state:"(getPstate st11 ''RAESdischarging'')=''control''"
+ and st11_if31:"(((getVarReal st11 ''Pl'') - (getVarReal st11 ''Pwec'')) > 250)=False"
+ and st12:"(st12=(setVarReal st11 ''RAESdisch'' (real 0)))"
+ and st13:"(st13=(setPstate st12 ''RAESdischarging'' ''''stop''''))"
+ and st14:"(st14=(setPstate st13 ''GeneratorWork'' ''control''))"
+ and st15:"(st15=(setVarBool st14 ''_dshcg_gen'' True))"
+ and st15_GeneratorWork_state:"(getPstate st15 ''GeneratorWork'')=''control''"
+ and st15_if0:"(getVarBool st15 ''_dshcg_gen'')=True"
+ and st16:"(st16=(setVarBool st15 ''_dshcg_gen'' False))"
+ and st17:"(st17=(setVarReal st16 ''Pdg'' (((getVarReal st16 ''Pl'') - (getVarReal st16 ''Pwec'')) - 550)))"
+ and st18:"(st18=(toEnv st17))"
+ and st_final:"(st_final=st18)"
+shows "(inv st_final)"
+
+end

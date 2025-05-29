@@ -1,0 +1,109 @@
+program Microgrid{
+	clock 100;
+    input Pwec 0x00 0x00 32;
+	input Pl 0x00 0x04 32;
+	input SOC 0x00 0x08 32;
+	input CycleCh 0x00 0x12 32;
+	
+    output Pdg 0x00 0x016 32;
+	output Pwec_curt 0x00 0x20 32;
+	output RAESch 0x00 0x24 32;
+	output RAESdisch 0x00 0x28 32;
+	output Ptes 0x00 0x32 32;
+	
+	const float PRAES_MIN = 250;
+	const float PRAES_MAX = 550;
+	const float PDG_MAX = 1010;
+	const float PDG_CC = 0.21;
+	const float SOC_THRESH = 0.2;
+	const time TIMEDG_MIN = 0t1h;
+	const float PDD_DES = 0.6;
+	
+	float Pwec = Pwec[];
+	float Pl = Pl[];
+	float SOC = SOC[];
+	bool CycleCh = CycleCh[];
+	
+	float Pdg = Pdg[];
+	float Pwec_curt = Pwec_curt[];
+	float PRAESchg = RAESch[];
+	float PRAESdschg = RAESdisch[];
+	float Ptes = Ptes[];
+	
+	bool dshcg_gen = false;
+	
+	process MainController{
+		state control{
+			if (Pwec > Pl){
+				stop RAESdischarging;
+				PRAESdschg=0;
+				start RAEScharging;
+			}else{
+				stop RAEScharging;
+				PRAESchg=0;
+				if (SOC > SOC_THRESH){
+					start RAESdischarging;
+				} else{
+					PRAESdschg = 0;
+					stop RAESdischarging;
+					if (process GeneratorWork in state stop){
+						start GeneratorWork;
+					}
+				}
+			}
+		}
+	}
+	
+	process RAEScharging{
+		state control{
+			if (SOC < 1 && Pwec - Pl > PRAES_MIN){
+				if (Pwec - Pl < PRAES_MAX){
+					PRAESchg = Pwec - Pl;
+				}else{
+					PRAESchg = PRAES_MAX;
+					Pwec_curt = Pwec - Pl - PRAES_MAX;
+				}
+			}else{
+				PRAESchg=0;
+				Pwec_curt = Pwec - Pl;
+			}
+		}
+	}
+	
+	process RAESdischarging{
+		state control{
+			if (Pl - Pwec > PRAES_MIN) {
+				if (Pl - Pwec < PRAES_MAX) {
+					PRAESdschg = Pl - Pwec;
+				}else{
+					PRAESdschg = PRAES_MAX;
+					start GeneratorWork;
+				}
+			}else{
+				PRAESdschg = 0;
+				stop;
+				start GeneratorWork;
+				dshcg_gen = true;
+			}
+		}
+	}
+	
+	process GeneratorWork{
+		state control{
+			if (dshcg_gen){
+				dshcg_gen = false;
+				Pdg = Pl - Pwec - PRAES_MAX;
+			}else{
+				if (CycleCh && Pl - Pwec < PDG_MAX*PDG_CC && SOC<1){
+					PRAESchg = PRAES_MAX;
+					Pdg = Pl - Pwec + PRAES_MAX;
+				}else{
+					Pdg = Pl - Pwec;
+				}
+			}
+			
+		}
+	}
+	
+	
+}
