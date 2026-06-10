@@ -77,13 +77,15 @@ program Microgrid{
 					PRAESdschg = Pl - Pwec;
 				}else{
 					PRAESdschg = PRAES_MAX;
+					dshcg_gen = true;
 					start GeneratorWork;
 				}
 			}else{
 				PRAESdschg = 0;
+				if (process GeneratorWork in state stop){
+					start GeneratorWork;
+				}
 				stop;
-				start GeneratorWork;
-				dshcg_gen = true;
 			}
 		}
 	}
@@ -104,6 +106,4 @@ program Microgrid{
 			
 		}
 	}
-	
-	
 }

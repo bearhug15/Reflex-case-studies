@@ -48,7 +48,9 @@ definition eEmergencyOut where
   getPstate (predEnv s1) ''Ctrl'' = ''emergency'' \<longrightarrow>
     getVarBool s1 ''out_0'' = False \<and>
     getVarBool s1 ''out_1'' = False)"
-
+(*s1,s1,s1,s2,s1,s2,s2,s2,s2,s2*)
+(*definition prevProcState :: state \<Rightarrow> process \<Rightarrow> state*)
+(*(let s2 = (prevProcState s1 ''Ctrl''))ltime  ''Ctrl'' \<ge> 120000*)
 definition eMotionlessTrans where
 "eMotionlessTrans s \<equiv>
 (\<forall>s1. toEnvP s1 \<and> substate s1 s \<and>
@@ -204,6 +206,11 @@ definition eEmergencyLast where
   getPstate s1 ''Ctrl'' = ''emergency'' \<longrightarrow>
   (\<forall>s2. toEnvP s2 \<and> substate s1 s2 \<and> substate s2 s \<longrightarrow>
     getPstate s2 ''Ctrl'' = ''emergency''))"
+
+definition eNotFirstState where
+"eNotFirstState s \<equiv>
+(\<forall>s1. toEnvP s1 \<and> substate s1 s \<and>
+  ltime s1 ''Ctrl'' > 100)"
 
 definition extraInv:
 "extraInv s \<equiv> toEnvP s \<and>

@@ -95,6 +95,8 @@ definition extra4 where
   (\<forall> s1. toEnvP s1 \<and> substate s1 s \<and> getPstate s1 ''Controller'' \<noteq> ''green'' \<longrightarrow> 
     getVarBool s1 ''light'' = False)"
 
+(s5 s1 s2 )
+
 definition extra5 where
 "extra5 s \<equiv>
 (\<forall> s5. toEnvP s5 \<and> substate s5 s \<and> 

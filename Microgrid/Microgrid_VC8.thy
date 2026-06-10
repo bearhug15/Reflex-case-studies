@@ -21,10 +21,11 @@ lemma
  and st8_if0:"(((getVarReal st8 ''Pl'') - (getVarReal st8 ''Pwec'')) > 250)=True"
  and st8_if2:"(((getVarReal st8 ''Pl'') - (getVarReal st8 ''Pwec'')) < 550)=False"
  and st9:"(st9=(setVarReal st8 ''RAESdisch'' 550))"
- and st10:"(st10=(setPstate st9 ''GeneratorWork'' ''control''))"
- and st10_GeneratorWork_state:"(getPstate st10 ''GeneratorWork'')=''stop''"
- and st11:"(st11=(toEnv st10))"
- and st_final:"(st_final=st11)"
+ and st10:"(st10=(setVarBool st9 ''_dshcg_gen'' True))"
+ and st11:"(st11=(setPstate st10 ''GeneratorWork'' ''control''))"
+ and st11_GeneratorWork_state:"(getPstate st11 ''GeneratorWork'')=''stop''"
+ and st12:"(st12=(toEnv st11))"
+ and st_final:"(st_final=st12)"
 shows "(inv st_final)"
 
 end

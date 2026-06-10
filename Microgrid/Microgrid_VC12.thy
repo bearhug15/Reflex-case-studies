@@ -20,12 +20,12 @@ lemma
  and st8_RAESdischarging_state:"(getPstate st8 ''RAESdischarging'')=''control''"
  and st8_if3:"(((getVarReal st8 ''Pl'') - (getVarReal st8 ''Pwec'')) > 250)=False"
  and st9:"(st9=(setVarReal st8 ''RAESdisch'' (real 0)))"
- and st10:"(st10=(setPstate st9 ''RAESdischarging'' ''''stop''''))"
- and st11:"(st11=(setPstate st10 ''GeneratorWork'' ''control''))"
- and st12:"(st12=(setVarBool st11 ''_dshcg_gen'' True))"
- and st12_GeneratorWork_state:"(getPstate st12 ''GeneratorWork'')=''stop''"
- and st13:"(st13=(toEnv st12))"
- and st_final:"(st_final=st13)"
+ and st9_if4:"(getPstate st9 ''GeneratorWork'' = ''stop'')=True"
+ and st10:"(st10=(setPstate st9 ''GeneratorWork'' ''control''))"
+ and st11:"(st11=(setPstate st10 ''RAESdischarging'' ''''stop''''))"
+ and st11_GeneratorWork_state:"(getPstate st11 ''GeneratorWork'')=''stop''"
+ and st12:"(st12=(toEnv st11))"
+ and st_final:"(st_final=st12)"
 shows "(inv st_final)"
 
 end

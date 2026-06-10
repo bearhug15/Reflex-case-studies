@@ -99,14 +99,21 @@ shows "(inv4 st_final)"
 proof(simp only: inv4_def; rule conjI)
   show "extraInv st_final" using assms extra inv4_def by auto
 next
-  have extra1:"extraInv st_final \<and> extraInv st0" using assms extra inv4_def by auto
+  have extra0:"extraInv st0" using assms inv4_def by simp
+  have extraf:"extraInv st_final" using assms extra inv4_def by auto
   show "R4 st_final"
   proof -
-    have "toEnvP st0 \<and> toEnvP st_final \<and> st0 = predEnv st_final" using assms inv4_def extraInv by auto
-    moreover have "P1 (p_2_3_conpred R4A st_final) st0" 
-      using P1_def p_2_3_conpred_def R4A_def assms extra1 
+    have 0:"toEnvP st0 \<and> toEnvP st_final \<and> st0 = predEnv st_final" using assms inv4_def extraInv by auto
+    moreover have "P3_cons R4A st0" using base_inv inv4_def R4_to_P3_cons by auto
+    moreover have "P1 (p_2_3_conpred R4A st_final) st0"
+    proof (simp add:P1_def p_2_3_conpred_def R4A_def SMT.verit_bool_simplify(4); rule impI)
+      have "(getPstate st0 ''Ctrl'')=''motionless''" using assms by auto
+      then have "\<not> getVarBool st0 ''out_0'' \<and> \<not> getVarBool st0 ''out_1''" using extra0 extraInv eMotionlessOut_def substate_refl 0 by auto
+      thus "\<not> getVarBool st_final ''out_0'' \<and> \<not> getVarBool st_final ''out_1''" using assms by auto
+    qed
     moreover have "(p_2_3_conpred R4A st_final) st_final"
-    ultimately show ?thesis using P2_1_lemma P2_1_cons_to_R3 by 
+      by (auto simp add: p_2_3_conpred_def R4A_def assms)
+    ultimately show ?thesis using P3_lemma P3_cons_to_R4 by auto
   qed
 qed
 

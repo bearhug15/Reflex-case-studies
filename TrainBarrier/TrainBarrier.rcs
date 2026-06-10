@@ -1,0 +1,61 @@
+program TrainBarrier {
+	
+	input inp 0x00 0x00 24;
+	output out 0x00 0x03 32;
+	
+	input bool on_sensor = inp[0];
+	input bool gate_up = inp[1];
+	input bool gate_down = inp[2];
+	
+	output bool up = out[0];
+	output bool down = out[1];
+	output bool LED_WHITE = out[2];
+	output bool LED_RED = out[3];
+
+	process Control {
+		
+		state openned {
+			LED_WHITE = true;
+			
+			if (on_sensor) {
+				LED_WHITE = false;
+				LED_RED = true;
+				down = true;
+				set state closing;
+			}
+		}
+		
+		state closing {
+			if (!on_sensor) {
+				down = false;
+				up = true;
+				set state openning;
+			} else if (gate_down) {
+				down = false;
+				set state closed;
+			}
+		}
+		
+		state closed {
+			if (!on_sensor) {
+				up = true;
+				set state openning;
+			}
+		}
+		
+		state openning {
+			if (on_sensor){
+				up = false;
+				down = true;
+				set state closing;
+			} else if (gate_up) {
+				LED_WHITE = true;
+				LED_RED = false;
+				up = false;
+				set state openned;
+			}
+		}
+		
+	}
+
+}

@@ -14,10 +14,13 @@ lemma
  and st6:"(st6=(setVarReal st5 ''RAESdisch'' (real 0)))"
  and st7:"(st7=(setPstate st6 ''RAEScharging'' ''control''))"
  and st7_RAEScharging_state:"(getPstate st7 ''RAEScharging'')=''stop''"
- and st7_RAESdischarging_state:"(getPstate st7 ''RAESdischarging'')=''stop''"
- and st7_GeneratorWork_state:"(getPstate st7 ''GeneratorWork'')=''stop''"
- and st8:"(st8=(toEnv st7))"
- and st_final:"(st_final=st8)"
+ and st7_RAESdischarging_state:"(getPstate st7 ''RAESdischarging'')=''control''"
+ and st7_if4:"(((getVarReal st7 ''Pl'') - (getVarReal st7 ''Pwec'')) > 250)=True"
+ and st7_if5:"(((getVarReal st7 ''Pl'') - (getVarReal st7 ''Pwec'')) < 550)=True"
+ and st8:"(st8=(setVarReal st7 ''RAESdisch'' ((getVarReal st7 ''Pl'') - (getVarReal st7 ''Pwec''))))"
+ and st8_GeneratorWork_state:"(getPstate st8 ''GeneratorWork'')=''stop''"
+ and st9:"(st9=(toEnv st8))"
+ and st_final:"(st_final=st9)"
 shows "(inv st_final)"
 
 end

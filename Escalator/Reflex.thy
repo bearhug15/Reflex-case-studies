@@ -153,7 +153,7 @@ lemma substate_trans:
 "substate s1 s2 \<and> substate s2 s3 \<Longrightarrow> substate s1 s3"
 proof(induction s3)
     case emptyState
- assume 1: "substate s1 s2 \<and> substate s2 emptyState"
+    assume 1: "substate s1 s2 \<and> substate s2 emptyState"
     hence "s2=emptyState"
     proof(cases)
       assume "s2=emptyState"

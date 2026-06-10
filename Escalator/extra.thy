@@ -48,8 +48,45 @@ definition eEmergencyOut where
   getPstate (predEnv s1) ''Ctrl'' = ''emergency'' \<longrightarrow>
     getVarBool s1 ''out_0'' = False \<and>
     getVarBool s1 ''out_1'' = False)"
+(*s1,s1,s1,s2,s1,s2,s2,s2,s2,s2*)
+(*definition prevProcState :: state \<Rightarrow> process \<Rightarrow> state*)
+(*(let s2 = (prevProcState s1 ''Ctrl''))ltime  ''Ctrl'' \<ge> 120000*)
+
+primrec prevProcState :: "state \<Rightarrow> process \<Rightarrow> state" where
+"prevProcState emptyState proc = emptyState"
+| "prevProcState (toEnv s) proc = prevProcState s proc"
+| "prevProcState (setVarBool s _ _) proc = prevProcState s proc"
+| "prevProcState (setVarInt s _ _) proc = prevProcState s proc"
+| "prevProcState (setVarNat s _ _) proc = prevProcState s proc"
+| "prevProcState (setVarReal s _ _) proc = prevProcState s proc"
+| "prevProcState (setPstate s pr ps) proc = 
+    (if (proc = pr \<and> ps \<noteq> (getPstate s proc)) then s else prevProcState s proc)"
+| "prevProcState (reset s _) proc = prevProcState s proc"
+
+lemma "prevProcState s p = emptyState \<equiv> \<forall>s1. substate s1 s \<longrightarrow> getPstate s1 p = getPstate s p"
+proof sorry
+(*Рассмотреть дополнительный конструктор для *после инициализации входных переменных* *)
+(*Then (prevProcState s1 process) = emptyState equivalent of
+(\<forall>s2. toEnvP s2 \<and> substate s2 s1 \<longrightarrow>
+      getPstate s2 process = pstate)*)
+
 
 definition eMotionlessTrans where
+"eMotionlessTrans s \<equiv>
+(\<forall>s1. toEnvP s1 \<and> substate s1 s \<and>
+  getPstate s1 ''Ctrl'' = ''motionless'' \<longrightarrow>
+    (let s2 = (prevProcState s1 ''Ctrl'') in 
+      (s2 = emptyState) \<or>
+      (getPstate s2 ''Ctrl'' = ''goUp''
+        \<and> ltime s2 ''Ctrl'' \<ge> 120000) \<or> 
+      (getPstate s2 ''Ctrl'' = ''goDown''
+        \<and> ltime s2 ''Ctrl'' \<ge> 120000) \<or>
+      (getPstate s2 ''Ctrl'' = ''stuckState''
+        \<and> ltime s2 ''Ctrl'' \<ge> 1000
+        \<and> getVarBool s2 ''moving'' = False))
+)"
+
+(*definition eMotionlessTrans where
 "eMotionlessTrans s \<equiv>
 (\<forall>s1. toEnvP s1 \<and> substate s1 s \<and>
   getPstate s1 ''Ctrl'' = ''motionless'' \<longrightarrow>
@@ -80,6 +117,7 @@ definition eMotionlessTrans where
       getPstate s3 ''Ctrl'' = ''motionless'' \<and>
       (\<forall>s4. toEnvP s4 \<and> substate s3 s4 \<and> substate s4 s1 \<longrightarrow>
         getPstate s4 ''Ctrl'' = ''motionless'')))"
+*)
 
 definition eGoUpTrans where
 "eGoUpTrans s \<equiv>
