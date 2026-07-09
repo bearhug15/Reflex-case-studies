@@ -1,0 +1,124 @@
+program Engine {
+	clock 100;
+	input inp 0x00 0x00 8;
+	output out 0x00 0x00 8;
+	
+	bool speed = inp[0];
+	bool liquidLevel = inp[1];
+	bool onOffButton = inp[2];
+	bool Thigh = inp[3];
+	bool Tlow = inp[4];
+
+	bool ignition = out[0];
+	bool sound = out[1];
+	bool pump = out[2];
+	bool valve = out[3];
+
+	const bool TURN_ON = true;
+	const bool TURN_OFF = false;
+	const bool PRESSED = true;
+	const bool NOT_PRESSED = false;
+	const bool HIGH = true;
+	const bool LOW = false;
+	const time EMERGENCY_stop_TIME = 0t3s;
+	const time SOUND_TIME = 0t1s;
+	const time WARN_LIQUID_LACK_TIMEOUT = 0t1m;
+
+	process EngineController {
+		state turnedOff {
+			if (onOffButton == PRESSED){
+				if (liquidLevel == HIGH) {
+					ignition = TURN_ON;
+					pump = TURN_ON;
+					sound = TURN_OFF;
+					start CoolingAgentController;
+					start Cooling;
+					stop Sound;
+					set next state;
+				} else{
+					start Sound;
+					start stopEngine;
+				}
+			}
+		}
+
+		state turningOn {
+			if (onOffButton == NOT_PRESSED){
+				set next state;
+			}
+		}
+
+		state turnedOn{
+			if (onOffButton == NOT_PRESSED){
+				reset timer;
+			} else if (speed == LOW) {
+				start stopEngine;
+			}
+
+			timeout EMERGENCY_stop_TIME {
+				start stopEngine;
+			}
+		}
+	}
+
+	process CoolingAgentController {
+		state normal {
+			if (liquidLevel == LOW){
+				sound = TURN_ON;
+				pump = TURN_OFF;
+				valve = TURN_OFF;
+				stop Cooling;
+				set next state;
+			}
+		}
+
+		state lack {
+			if (liquidLevel = HIGH) {
+				sound = TURN_OFF;
+				pump = TURN_ON;
+				start Cooling;
+				set state normal;
+			}
+			timeout WARN_LIQUID_LACK_TIMEOUT {
+				start stopEngine;
+			}
+		}
+	}
+
+	process stopEngine {
+		state stopEngine {
+			ignition = TURN_OFF;
+			sound= TURN_OFF;
+			stop CoolingAgentController;
+			pump = TURN_OFF;
+			valve = TURN_OFF;
+			stop Cooling;
+			if (onOffButton == NOT_PRESSED){
+				start EngineController;
+        		stop;
+			} else{
+				stop EngineController;
+			}
+		}
+	}
+
+	process Cooling {
+		state ctrl {
+			if (Thigh) {
+				valve = TURN_ON;
+			} else if (!Tlow) {
+				valve = TURN_OFF;
+			}
+		}
+	}
+
+	process Sound {
+		state sound {
+			sound = TURN_ON;
+			timeout SOUND_TIME {
+				sound = TURN_OFF;
+         		stop;
+			}
+		}
+	}
+}

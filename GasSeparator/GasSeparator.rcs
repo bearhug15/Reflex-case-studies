@@ -1,0 +1,313 @@
+program GasSeparator {
+    clock 100;
+    input inp 0x00 0x00 13;
+    output out 0x00 0x00 22;
+
+    bool AutoBtn = inp[0];
+    bool ManualBtn = inp[1];
+    bool SafetyStopBtn = inp[2];
+    bool EmergencyBtn = inp[3];
+    bool ThighAbnormally = inp[4];
+    bool Thigh = inp[5];
+    bool Tlow = inp[6];
+    bool PhighAbnormally = inp[7];
+    bool Phigh = inp[8];
+    bool Plow = inp[9];
+    bool Lfull = inp[10];
+    bool Ldeg = inp[11];
+    bool Llow = inp[12];
+    bool Lempty = inp[13];
+
+    bool filling = out[0];
+    bool release = out[1];
+    bool inert = out[2];
+    bool purge = out[3];
+    bool emptying = out[4];
+    bool heater = out[5];
+    bool AutoLED = out[6];
+    bool ManualLED = out[7];
+    bool SafetyLED = out[8];
+    bool EmergencyLED = out[9];
+    bool FillingLED = out[10];
+    bool DegasLED = out[11];
+    bool EmptyingLED = out[12];
+    bool HeatingLED = out[13];
+    bool GasAccumulatingLED = out[14];
+    bool ReleasingLED = out[15];
+    bool LfullLED = out[16];
+    bool LdegLED = out[17];
+    bool LlowLED = out[18];
+    bool LemptyLED = out[19];
+    bool ThighLED = out[20];
+    bool TlowLED = out[21];
+    bool PhighLED = out[22];
+    bool PlowLED = out[23];
+
+    const bool PRESSED = true;
+    const bool TURN_ON = true;
+    const bool TURN_OFF = false;
+    const time DEGASSING_TIMEOUT = 0t1m;
+    const time HEATING_TIMEOUT = 0t10s;
+    const time ACCUMULATING_TIMEOUT = 0t10s;
+    const time RELEASE_TIMEOUT = 0t10s;
+    const time PURGE_TIMEOUT = 0t10s;
+
+    process ButtonPressControl {
+        state waiting {
+            EmergencyLED = TURN_OFF;
+            SafetyLED = TURN_OFF;
+
+            if (AutoBtn == PRESSED) {
+                AutoLED = TURN_ON;
+                start EmergencyControl;
+                start AutoModeControl;
+                set next state;
+            }
+        }
+
+        state autoMode {
+            if (ManualBtn == PRESSED) {
+                AutoLED = TURN_OFF;
+                ManualLED = true;
+                set state waitingForStageCompletion;
+            } else if (SafetyStopBtn == PRESSED) {
+                AutoLED = TURN_OFF;
+                SafetyLED = TURN_ON;
+                set state waitingForEmptying;
+            }
+        }
+
+        state waitingForEmptying {
+            if (process AutoModeControl in state inactive) {
+                purge = TURN_ON;
+                release = TURN_ON;
+                stop EmergencyControl;
+                set next state;
+            }
+        }
+
+        state purge {
+            purge = TURN_ON;
+            release = TURN_ON;
+
+            timeout PURGE_TIMEOUT {
+                purge = TURN_OFF;
+                release = TURN_OFF;
+                LfullLED = TURN_OFF;
+                LdegLED = TURN_OFF;
+                LlowLED = TURN_OFF;
+                LemptyLED = TURN_OFF;
+                ThighLED = TURN_OFF;
+                TlowLED = TURN_OFF;
+                PhighLED = TURN_OFF;
+                PlowLED = TURN_OFF;
+                set state waiting;
+            }
+        }
+
+        state waitingForStageCompletion {
+            if (process AutoModeControl in state inactive) {
+                heater = TURN_OFF;
+                release = TURN_OFF;
+                HeatingLED = TURN_OFF;
+                GasAccumulatingLED = TURN_OFF;
+                ReleasingLED = TURN_OFF;
+                AutoLED = TURN_OFF;
+                ManualLED = TURN_OFF;
+                SafetyLED = TURN_OFF;
+                stop EmergencyControl;
+                set state waiting;
+            }
+        }
+    }
+
+    process EmergencyControl {
+        state autoMode {
+            if (EmergencyBtn == PRESSED || ThighAbnormally || PhighAbnormally) {
+                AutoLED = TURN_OFF;
+                DegasLED = TURN_OFF;
+                ManualLED = TURN_OFF;
+                SafetyLED = TURN_OFF;
+                EmergencyLED = TURN_ON;
+                EmptyingLED = TURN_ON;
+                stop ButtonPressControl;
+                stop AutoModeControl;
+                stop DegassingControl;
+                set next state;
+            }
+        }
+
+        state emptying {
+            filling = TURN_OFF;
+            release = TURN_OFF;
+            heater = TURN_OFF;
+            HeatingLED = TURN_OFF;
+            GasAccumulatingLED = TURN_OFF;
+            ReleasingLED = TURN_OFF;
+            emptying = TURN_ON;
+            inert = TURN_ON;
+
+            if (!Llow) {
+                inert = TURN_OFF;
+
+                if (Lempty) {
+                    emptying = TURN_OFF;
+                    EmptyingLED = TURN_OFF;
+                    set state purge;
+                }
+            }
+        }
+
+        state purge {
+            purge = TURN_ON;
+            release = TURN_ON;
+
+            timeout PURGE_TIMEOUT {
+                purge = TURN_OFF;
+                release = TURN_OFF;
+                LfullLED = TURN_OFF;
+                LdegLED = TURN_OFF;
+                LlowLED = TURN_OFF;
+                LemptyLED = TURN_OFF;
+                ThighLED = TURN_OFF;
+                TlowLED = TURN_OFF;
+                PhighLED = TURN_OFF;
+                PlowLED = TURN_OFF;
+                start ButtonPressControl;
+                stop;
+            }
+        }
+    }
+
+    process AutoModeControl {
+        state filling {
+            filling = TURN_ON;
+            release = TURN_ON;
+            FillingLED = TURN_ON;
+
+            if (Lfull) {
+                filling = TURN_OFF;
+                release = TURN_OFF;
+                FillingLED = TURN_OFF;
+
+                if (!ManualLED) {
+                    DegasLED = TURN_ON;
+                    start DegassingControl;
+                    set next state;
+                } else {
+                    stop;
+                }
+            }
+        }
+
+        state degassing {
+            if (!Ldeg) {
+                DegasLED = TURN_OFF;
+                stop DegassingControl;
+
+                if (!ManualLED) {
+                    set next state;
+                    EmptyingLED = TURN_ON;
+                } else {
+                    stop;
+                }
+            }
+
+            timeout DEGASSING_TIMEOUT {
+                DegasLED = TURN_OFF;
+                stop DegassingControl;
+
+                if (!ManualLED) {
+                    set next state;
+                    EmptyingLED = TURN_ON;
+                } else {
+                    stop;
+                }
+            }
+        }
+
+        state emptying {
+            heater = TURN_OFF;
+            release = TURN_OFF;
+            HeatingLED = TURN_OFF;
+            GasAccumulatingLED = TURN_OFF;
+            ReleasingLED = TURN_OFF;
+            emptying = TURN_ON;
+            inert = TURN_ON;
+
+            if (!Llow) {
+                inert = TURN_OFF;
+
+                if (Lempty) {
+                    emptying = TURN_OFF;
+                    EmptyingLED = TURN_OFF;
+
+                    if (ManualLED || SafetyLED) {
+                        AutoLED = TURN_OFF;
+                        stop;
+                    } else {
+                        filling = TURN_ON;
+                        release = TURN_ON;
+                        FillingLED = TURN_ON;
+                        set state filling;
+                    }
+                }
+            }
+        }
+    }
+
+    process DegassingControl {
+        state heating {
+            heater = TURN_ON;
+            HeatingLED = TURN_ON;
+
+            if (Thigh || Phigh) {
+                heater = TURN_OFF;
+                HeatingLED = TURN_OFF;
+                GasAccumulatingLED = TURN_ON;
+                set next state;
+            }
+
+            timeout HEATING_TIMEOUT {
+                heater = TURN_OFF;
+                HeatingLED = TURN_OFF;
+                GasAccumulatingLED = TURN_ON;
+                set next state;
+            }
+        }
+
+        state accumulating {
+            if (Phigh) {
+                release = TURN_ON;
+                GasAccumulatingLED = TURN_OFF;
+                ReleasingLED = TURN_ON;
+                set next state;
+            }
+
+            timeout ACCUMULATING_TIMEOUT {
+                release = TURN_ON;
+                GasAccumulatingLED = TURN_OFF;
+                ReleasingLED = TURN_ON;
+                set next state;
+            }
+        }
+
+        state releasing {
+            if (!Plow) {
+                release = TURN_OFF;
+                heater = TURN_ON;
+                ReleasingLED = TURN_OFF;
+                HeatingLED = TURN_ON;
+                set state heating;
+            }
+
+            timeout RELEASE_TIMEOUT {
+                release = TURN_OFF;
+                heater = TURN_ON;
+                ReleasingLED = TURN_OFF;
+                HeatingLED = TURN_ON;
+                set state heating;
+            }
+        }
+    }
+}

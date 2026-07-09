@@ -1,0 +1,132 @@
+program MassageChair {
+    clock 100;
+    input inp 0x00 0x00 8;
+    output out 0x00 0x00 8;
+
+    bool onOff = inp[0];
+    bool startButton = inp[1];
+    bool rollerButton = inp[2];
+    bool vibrationButton = inp[3];
+    bool buttonUp = inp[4];
+    bool buttonDown = inp[5];
+    bool upper = inp[6];
+    bool lower = inp[7];
+  
+    bool roller = out[0];
+    bool vibration = out[1];
+    bool up = out[2];
+    bool down = out[3];
+    bool enabled = out[4];
+
+    const bool PRESSED = true;
+    const bool TURN_ON = true;
+    const bool TURN_OFF = false;
+    const time ROLLER_MASSAGE_TIME = 0t10m;
+    const time VIBRATION_MASSAGE_TIME = 0t30m;
+    const time ON_OFF_TIME = 0t1s;
+  
+   
+    process Controller {
+        state turnedOff {
+            if (onOff != PRESSED) 
+                reset timer;
+            timeout ON_OFF_TIME {
+                set next state;
+            }
+        }
+    
+        state turningOn {
+            if (onOff != PRESSED){
+                enabled = true;
+                start Roller;
+                start Vibration;
+                start BackMovement;
+                set next state;
+            }
+        }
+        
+        state turnedOn {
+            if (onOff != PRESSED) {
+                reset timer;
+                if (startButton == PRESSED) {
+                    roller = false;
+                    vibration = true;
+                    start Roller;
+                    start Vibration;
+                }
+            }
+            timeout ON_OFF_TIME {
+                set next state;}
+        }
+        
+        state turningOff {
+            if (onOff != PRESSED) {
+                roller = TURN_OFF;
+                vibration = TURN_OFF;
+                enabled = false;
+                stop Roller;
+                stop Vibration;
+                stop BackMovement;
+                down = TURN_OFF;
+                up = TURN_OFF;
+                if (! upper) 
+                    up = TURN_ON;
+                set next state;
+            }
+        }
+        
+        state backLifting {
+            if (upper) {
+                up = TURN_OFF;
+                set state turnedOff;
+            }
+        }
+    }  
+    
+    process Roller {
+        state waiting {
+            if (rollerButton == PRESSED) {
+                roller = TURN_ON;
+                set next state;
+            }
+        }
+        
+        state massaging{
+            timeout ROLLER_MASSAGE_TIME {
+                roller = TURN_OFF;
+                stop;
+            }
+        }
+    } 
+        
+    process Vibration {
+        state waiting {
+            if (vibrationButton == PRESSED) {
+                vibration = TURN_ON;
+                set next state;
+            }
+        }
+        
+        state massaging {
+            timeout VIBRATION_MASSAGE_TIME {
+                vibration = TURN_OFF;
+                stop;
+            }
+        }
+    }
+        
+    process BackMovement {
+        state ctrl {
+            if (buttonUp == PRESSED && !upper) {
+                up = TURN_ON;
+                down = TURN_OFF;
+            } else if (buttonDown == PRESSED && !lower) {
+                up = TURN_OFF;
+                down = TURN_ON;
+            } else {
+                up = TURN_OFF;
+                down = TURN_OFF;
+            }
+        }
+    }
+}      

@@ -1,0 +1,134 @@
+PROGRAM MassageChair
+  VAR_INPUT
+    onOff: BOOL;
+    startButton: BOOL;
+    rollerButton: BOOL;
+    vibrationButton: BOOL;
+    buttonUp, buttonDown: BOOL;
+    upper, lower: BOOL;
+  END_VAR
+  
+  VAR_OUTPUT
+    roller: BOOL;
+    vibration: BOOL;
+    up, down: BOOL;
+    enabled: BOOL;
+  END_VAR
+  
+  VAR CONSTANT
+     PRESSED: BOOL := TRUE;
+     TURN_ON: BOOL := TRUE;
+     TURN_OFF: BOOL := FALSE;
+     ROLLER_MASSAGE_TIME: TIME := T#10m;
+     VIBRATION_MASSAGE_TIME : TIME := T#30m;
+     ON_OFF_TIME: TIME := T#1s;
+  END_VAR
+   
+  PROCESS Controller
+    STATE turnedOff
+      IF onOff <> PRESSED THEN
+        RESET TIMER;
+      END_IF
+      TIMEOUT ON_OFF_TIME THEN
+        SET NEXT;
+      END_TIMEOUT
+    END_STATE
+    
+    STATE turningOn
+      IF onOff <> PRESSED THEN
+        enabled := TRUE;
+        START PROCESS Roller;
+        START PROCESS Vibration;
+        START PROCESS BackMovement;
+        SET NEXT;
+      END_IF
+    END_STATE
+      
+    STATE turnedOn
+      IF onOff <> PRESSED THEN
+        RESET TIMER;
+        IF startButton = PRESSED THEN
+          roller := FALSE;
+          vibration := FALSE;
+          START PROCESS Roller;
+          START PROCESS Vibration;
+        END_IF
+      END_IF
+      TIMEOUT ON_OFF_TIME THEN
+        SET NEXT;
+      END_TIMEOUT
+    END_STATE
+    
+    STATE turningOff
+      IF onOff <> PRESSED THEN
+        roller := TURN_OFF;
+        vibration := TURN_OFF;
+        enabled := FALSE;
+        STOP PROCESS Roller;
+        STOP PROCESS Vibration;
+        STOP PROCESS BackMovement;
+        down := TURN_OFF;
+		up := TURN_OFF;
+        IF NOT upper THEN
+          up := TURN_ON;
+        END_IF
+        SET NEXT;
+      END_IF
+    END_STATE
+      
+    STATE backLifting
+      IF upper THEN
+        up := TURN_OFF;
+        SET STATE turnedOff;
+      END_IF
+    END_STATE
+  END_PROCESS
+  
+  PROCESS Roller
+    STATE waiting
+      IF rollerButton = PRESSED THEN
+        roller := TURN_ON;
+        SET NEXT;
+      END_IF
+    END_STATE
+      
+    STATE massaging
+      TIMEOUT ROLLER_MASSAGE_TIME THEN
+        roller := TURN_OFF;
+        STOP;
+      END_TIMEOUT
+    END_STATE
+  END_PROCESS
+    
+  PROCESS Vibration
+    STATE waiting
+      IF vibrationButton = PRESSED THEN
+        vibration := TURN_ON;
+        SET NEXT;
+      END_IF
+    END_STATE
+      
+    STATE massaging
+      TIMEOUT VIBRATION_MASSAGE_TIME THEN
+        vibration := TURN_OFF;
+        STOP;
+      END_TIMEOUT
+    END_STATE
+  END_PROCESS
+    
+  PROCESS BackMovement
+    STATE ctrl LOOPED
+      IF buttonUp = PRESSED AND NOT upper THEN
+        up := TURN_ON;
+        down := TURN_OFF;
+      ELSIF buttonDown = PRESSED AND NOT lower THEN
+        up := TURN_OFF;
+        down := TURN_ON;
+      ELSE
+	    up := TURN_OFF;
+		down := TURN_OFF;
+      END_IF
+    END_STATE
+  END_PROCESS
+END_PROGRAM
+        

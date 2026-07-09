@@ -1,0 +1,129 @@
+program Tram {
+    clock 100;
+    input inp 0x00 0x00 6;
+    output out 0x00 0x00 4;
+
+    bool openCloseButton = inp[0];
+    bool antiClamp = inp[1];
+    bool opened = inp[2];
+    bool closed = inp[3];
+    bool normalButton = inp[4];
+    bool requestStopButton = inp[5];
+
+    bool open = out[0];
+    bool close = out[1];
+    bool emergencyMode = out[2];
+    bool sound = out[3];
+
+    int32 attempts;
+
+    const bool PRESSED = true;
+    const bool DETECTED = true;
+    const bool TURN_ON = true;
+    const bool TURN_OFF = false;
+    const time CLOSING_ATTEMPTS_INTERVAL = 0t2m;
+    const time REQ_STOP_SIGNAL_DURATION = 0t1s;
+
+    process Init {
+        state init {
+            start AutoDoors;
+            start RequestStopController;
+            stop;
+        }
+    }
+
+    process AutoDoors {
+        state closed {
+            if (openCloseButton == PRESSED) {
+                open = true;
+                set next state;
+            }
+        }
+
+        state opening {
+            if (opened) {
+                open = false;
+                sound = TURN_OFF;
+                stop RequestStopController;
+                set next state;
+            }
+        }
+
+        state open {
+            if (openCloseButton == PRESSED) {
+                attempts = 0;
+                start Closing;
+                start RequestStopController;
+                set next state;
+            }
+        }
+
+        state closing {
+            if (process Closing in state stop) {
+                set state closed;
+            } else if (process Closing in state error) {
+                attempts = attempts + 1;
+                if (attempts >= 4) {
+                    emergencyMode = true;
+                    stop Closing;
+                    set state emergencyMode;
+                } else {
+                    set next state;
+                }
+            }
+        }
+
+        state closingDelay {
+            timeout CLOSING_ATTEMPTS_INTERVAL {
+                start Closing;
+                set state closing;
+            }
+        }
+
+        state emergencyMode {
+            if (normalButton == PRESSED) {
+                emergencyMode = false;
+                set state closed;
+            }
+        }
+    }
+
+    process Closing {
+        state closing {
+            close = true;
+
+            if (closed) {
+                close = false;
+                stop;
+            } else if (antiClamp == DETECTED) {
+                close = false;
+                set next state;
+            }
+        }
+
+        state opening {
+            if (opened) {
+                open = false;
+                error;
+            } else {
+                open = true;
+            }
+        }
+    }
+
+    process RequestStopController {
+        state waiting {
+            if (requestStopButton == PRESSED) {
+                sound = TURN_ON;
+                set next state;
+            }
+        }
+
+        state signal {
+            timeout REQ_STOP_SIGNAL_DURATION {
+                sound = TURN_OFF;
+                set state waiting;
+            }
+        }
+    }
+}

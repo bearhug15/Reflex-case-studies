@@ -1,0 +1,45 @@
+program BaggageCarousel {
+	clock 100;
+	input inp 0x00 0x00 8;
+	output out 0x00 0x00 8;
+	
+	bool startButton = iinp[0];
+	bool pSensor = inp[1];
+	bool weight = inp[2];
+	bool stuck = inp[3];
+
+	bool engine = out[0];
+
+
+	const bool PRESSED = true;
+	const bool DETECTED = true;
+	const bool NOT_DETECTED = false;
+	const bool HIGH = true;
+	const bool LOW = false;
+	const time TURN_ON = true;
+	const time TURN_OFF = false;
+	const time IDLE_TIMEOUT = 0t30s;
+
+	process Carousel {
+		state turnedOff{
+			if (startButton == PRESSED && weight == LOW && stuck == NOT_DETECTED) {
+				engine = TURN_ON;
+				set next state;
+			}
+		}
+
+		state turnedOn{
+			if (pSensor == DETECTED)
+				reset timer;
+			if (weight = HIGH || stuck = DETECTED){
+				engine = TURN_OFF;
+				set state turnedOff;
+			}
+			timeout IDLE_TIMEOUT{
+				engine = TURN_OFF;
+				set state turnedOff;
+			}
+		}
+	}
+
+}

@@ -1,0 +1,112 @@
+program WashingMachine {
+    clock 100;
+    input inp 0x00 0x00 6;
+    output out 0x00 0x00 6;
+
+    bool startButton = inp[0];
+    bool locked = inp[1];
+    bool waterLevel = inp[2];
+    bool waterPresence = inp[3];
+    int32 temp = inp[4];
+    int32 freq = inp[5];
+
+    bool left = out[0];
+    bool right = out[1];
+    bool filling = out[2];
+    bool drain = out[3];
+    bool heater = out[4];
+    bool lock = out[5];
+    bool washing = out[6];
+
+    const bool PRESSED = true;
+    const bool SUFFICIENT = true;
+    const bool TURN_ON = true;
+    const bool TURN_OFF = false;
+    const time WASHING_TIME = 0t30m;
+    const time DIRECTION_CHANGE_PERIOD = 0t1m;
+    const int32 MIN_TEMP = 30;
+    const int32 MAX_TEMP = 40;
+
+    process Washing {
+        state idle {
+            if (startButton == PRESSED) {
+                lock = TURN_ON;
+                set next state;
+            }
+        }
+
+        state locking {
+            if (locked == true) {
+                filling = TURN_ON;
+                start Drum;
+                set next state;
+            }
+        }
+
+        state waterSupply {
+            if (waterLevel == SUFFICIENT) {
+                filling = TURN_OFF;
+                washing = TURN_ON;
+                set next state;
+            }
+        }
+
+        state wash {
+            if (temp >= MIN_TEMP) {
+                heater = TURN_OFF;
+            } else if (temp < MAX_TEMP) {
+                heater = TURN_ON;
+            }
+
+            timeout WASHING_TIME {
+                washing = TURN_OFF;
+                drain = TURN_ON;
+                heater = TURN_OFF;
+                set next state;
+            }
+        }
+
+        state draining {
+            if (waterPresence == false) {
+                drain = TURN_OFF;
+                lock = TURN_OFF;
+                left = TURN_OFF;
+                right = TURN_OFF;
+                stop Drum;
+                set state idle;
+            }
+        }
+    }
+
+    process Drum {
+        state leftRotation {
+            left = TURN_ON;
+
+            timeout DIRECTION_CHANGE_PERIOD {
+                left = TURN_OFF;
+                set next state;
+            }
+        }
+
+        state leftToRight {
+            if (freq == 0) {
+                right = TURN_ON;
+                set next state;
+            }
+        }
+
+        state rightRotation {
+            timeout DIRECTION_CHANGE_PERIOD {
+                right = TURN_OFF;
+                set next state;
+            }
+        }
+
+        state rightToLeft {
+            if (freq == 0) {
+                left = TURN_ON;
+                set state leftRotation;
+            }
+        }
+    }
+}

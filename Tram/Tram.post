@@ -1,0 +1,130 @@
+PROGRAM Tram
+  VAR_INPUT
+    openCloseButton: BOOL;
+    antiClamp: BOOL;
+    opened, closed: BOOL;
+    normalButton: BOOL;
+    requestStopButton: BOOL;
+  END_VAR
+  
+  VAR_OUTPUT
+    open, close: BOOL;
+    emergencyMode: BOOL;
+    sound: BOOL;
+  END_VAR
+  
+  VAR
+    attempts: INT;
+  END_VAR
+  
+  VAR CONSTANT
+    PRESSED: BOOL:= TRUE;
+    DETECTED: BOOL:= TRUE;
+    TURN_ON: BOOL:= TRUE;
+    TURN_OFF: BOOL:= FALSE;
+    CLOSING_ATTEMPTS_INTERVAL: TIME:= T#2m;
+    REQ_STOP_SIGNAL_DURATION: TIME:= T#1s;
+  END_VAR
+  
+  PROCESS Init
+    STATE init
+      START PROCESS AutoDoors;
+      START PROCESS RequestStopController;
+      STOP;
+    END_STATE
+  END_PROCESS
+  
+  PROCESS AutoDoors
+    STATE closed
+      IF openCloseButton = PRESSED THEN
+        open := TRUE;
+        SET NEXT;
+      END_IF
+    END_STATE
+    
+    STATE opening
+      IF opened THEN
+        open := FALSE;
+        sound := TURN_OFF;
+        STOP PROCESS RequestStopController;
+        SET NEXT;
+      END_IF
+    END_STATE
+    
+    STATE open
+      IF openCloseButton = PRESSED THEN
+        attempts := 0;
+        START PROCESS Closing;
+        START PROCESS RequestStopController;
+        SET NEXT;
+      END_IF
+    END_STATE
+    
+    STATE closing
+      IF PROCESS Closing IN STATE STOP THEN
+        SET STATE closed;
+      ELSIF PROCESS Closing IN STATE ERROR THEN
+        attempts := attempts + 1;
+         IF attempts >= 4 THEN
+           emergencyMode := TRUE;
+		   STOP PROCESS Closing;
+           SET STATE emergencyMode;
+         ELSE
+          SET NEXT;
+        END_IF
+      END_IF
+    END_STATE
+    
+    STATE closingDelay
+      TIMEOUT CLOSING_ATTEMPTS_INTERVAL THEN
+        START PROCESS Closing;
+        SET STATE closing;
+      END_TIMEOUT
+    END_STATE
+    
+    STATE emergencyMode
+      IF normalButton = PRESSED THEN
+        emergencyMode := FALSE;
+        SET STATE closed;
+      END_IF
+    END_STATE
+  END_PROCESS
+  
+  PROCESS Closing
+    STATE closing
+      close := TRUE;
+      IF closed THEN
+        close := FALSE;
+        STOP;
+      ELSIF antiClamp = DETECTED THEN
+        close := FALSE;
+        SET NEXT;
+      END_IF
+    END_STATE
+    
+    STATE opening
+      IF opened THEN
+        open := FALSE;
+        ERROR;
+      ELSE
+        open := TRUE;
+      END_IF
+    END_STATE
+  END_PROCESS
+  
+  PROCESS RequestStopController
+    STATE waiting
+      IF requestStopButton = PRESSED THEN
+        sound := TURN_ON;
+        SET NEXT;
+      END_IF
+    END_STATE
+    
+    STATE signal
+      TIMEOUT REQ_STOP_SIGNAL_DURATION THEN
+        sound := TURN_OFF;
+        SET STATE waiting;
+      END_TIMEOUT
+    END_STATE
+  END_PROCESS
+END_PROGRAM

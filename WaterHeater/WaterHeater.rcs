@@ -1,0 +1,83 @@
+program WaterHeater {
+    clock 100;
+    input inp 0x00 0x00 8;
+    output out 0x00 0x00 8;
+
+    bool sswitch = inp[0];
+    bool maxLevel = inp[1];
+    bool minLevel = inp[2];
+    bool waterPresence = inp[3];
+    bool maxTemp = inp[4];
+    bool minTemp = inp[5];
+
+    bool intake = out[0];
+    bool heater = out[1];
+
+    const bool TURNED_ON = true;
+    const bool TURNED_OFF = false;
+
+    process Controller {
+        state turnedOff {
+            if (sswitch == TURNED_ON) {
+                start Filling;
+                start Heating;
+                set next state;
+            }
+        }
+
+        state turnedOn {
+            if (sswitch == TURNED_OFF) {
+                intake = TURNED_OFF;
+                heater = TURNED_OFF;
+                set state turnedOff;
+                stop Filling;
+                stop Heating;
+            }
+        }
+    }
+
+    process Filling {
+        state turnedOn {
+            intake = TURNED_ON;
+            if (maxLevel) {
+                intake = TURNED_OFF;
+                set next state;
+            }
+        }
+
+        state turnedOff {
+            if (!minLevel) {
+                intake = TURNED_ON;
+                set state turnedOn;
+            }
+        }
+    }
+
+    process Heating {
+        state noWater {
+            if (waterPresence) {
+                heater = TURNED_ON;
+                set next state;
+            }
+        }
+
+        state turnedOn {
+            if (!waterPresence) {
+                heater = TURNED_OFF;
+                set state noWater;
+            } else if (maxTemp) {
+                heater = TURNED_OFF;
+                set next state;
+            }
+        }
+
+        state turnedOff {
+            if (!waterPresence) {
+                set state noWater;
+            } else if (!minTemp) {
+                heater = TURNED_ON;
+                set state turnedOn;
+            }
+        }
+    }
+}

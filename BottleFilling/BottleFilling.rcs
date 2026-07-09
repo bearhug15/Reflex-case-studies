@@ -1,0 +1,110 @@
+program BottleFilling {
+    clock 100;
+    input inp 0x00 0x00 8;
+    output out 0x00 0x00 8;
+
+    bool iLowLevel = inp[0];
+    bool iHighLevel = inp[1];
+    bool iLowTemp = inp[2];
+    bool iHighTemp = inp[3];
+    bool iBottleLevel = inp[4];
+    bool iBottlePosition = inp[5];
+
+    bool oFillTank = out[0];
+    bool oSteam = out[1];
+    bool oFillBottle = out[2];
+    bool oConveyor = out[3];
+
+    const bool TURNED_ON = true;
+    const bool TURNED_OFF = false;
+
+    process Initialization {
+        state begin {
+            oFillTank = TURNED_ON;
+            oSteam = TURNED_OFF;
+
+            if (iHighLevel) {
+                oFillTank = TURNED_OFF;
+                start ForceSterilization;
+                set next state;
+            }
+        }
+
+        state waitForSterilization {
+            if (process ForceSterilization in state inactive) {
+                start MainLoop;
+                set next state;
+            }
+        }
+
+        state keepSterilization {
+            if (!iLowTemp) {
+                oSteam = TURNED_ON;
+            } else if (iHighTemp) {
+                oSteam = TURNED_OFF;
+            }
+        }
+    }
+
+    process MainLoop {
+        state begin {
+            start NextBottle;
+            set next state;
+        }
+
+        state waitForNextBottle {
+            if (process NextBottle in state inactive) {
+                set next state;
+            }
+        }
+
+        state waitForFilling {
+            oFillBottle = TURNED_ON;
+
+            if (iBottleLevel) {
+                oFillBottle = TURNED_OFF;
+
+                if (!iLowLevel) {
+                    start Initialization;
+                    stop;
+                } else {
+                    restart;
+                }
+            }
+        }
+    }
+
+    process ForceSterilization {
+        state heatUp {
+            oSteam = TURNED_ON;
+
+            if (iHighTemp) {
+                set next state;
+            }
+        }
+
+        state sterilizationFor1min {
+            timeout 0t1m {
+                oSteam = TURNED_OFF;
+                stop;
+            }
+        }
+    }
+
+    process NextBottle {
+        state begin {
+            oConveyor = TURNED_ON;
+
+            if (!iBottlePosition) {
+                set next state;
+            }
+        }
+
+        state waitBottlePosition {
+            if (iBottlePosition) {
+                oConveyor = TURNED_OFF;
+                stop;
+            }
+        }
+    }
+}
