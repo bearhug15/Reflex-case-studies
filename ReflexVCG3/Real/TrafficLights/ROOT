@@ -1,0 +1,18 @@
+session TrafficLights = HOL +
+  options [document = false, quick_and_dirty]
+  theories
+    ReflexBase ReflexLemmas ReflexPatterns
+    TrafficLightsTheory LoopInvariants Requirements
+    ExtraInvariants
+    TrafficLights_VC0
+    TrafficLights_VC1
+    TrafficLights_VC10
+    TrafficLights_VC11
+    TrafficLights_VC2
+    TrafficLights_VC3
+    TrafficLights_VC4
+    TrafficLights_VC5
+    TrafficLights_VC6
+    TrafficLights_VC7
+    TrafficLights_VC8
+    TrafficLights_VC9

@@ -1,0 +1,39 @@
+session Barrier = HOL +
+  options [document = false, quick_and_dirty]
+  theories
+    ReflexBase ReflexLemmas ReflexPatterns
+    BarrierTheory LoopInvariants Requirements
+    ExtraInvariants
+    Barrier_VC0
+    Barrier_VC1
+    Barrier_VC10
+    Barrier_VC11
+    Barrier_VC12
+    Barrier_VC13
+    Barrier_VC14
+    Barrier_VC15
+    Barrier_VC16
+    Barrier_VC17
+    Barrier_VC18
+    Barrier_VC19
+    Barrier_VC2
+    Barrier_VC20
+    Barrier_VC21
+    Barrier_VC22
+    Barrier_VC23
+    Barrier_VC24
+    Barrier_VC25
+    Barrier_VC26
+    Barrier_VC27
+    Barrier_VC28
+    Barrier_VC29
+    Barrier_VC3
+    Barrier_VC30
+    Barrier_VC31
+    Barrier_VC32
+    Barrier_VC4
+    Barrier_VC5
+    Barrier_VC6
+    Barrier_VC7
+    Barrier_VC8
+    Barrier_VC9

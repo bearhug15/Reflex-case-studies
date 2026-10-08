@@ -1,0 +1,7 @@
+# Proofs for the conditions bottleFilling.rcs generates, measured against Isabelle2025-2 on
+# 2026-10-08 with tools/check-with-isabelle.sh <dir> <Theory> @structural, time-boxed to five
+# minutes for the whole program. @cycle and @base are that script's structural proof written
+# out on one line. Condition names carry the number they were written under; regenerate
+# rather than renumber.
+
+# 705 conditions. A sample, VC0-VC11, was tried at 60 s each; all 12 time out.

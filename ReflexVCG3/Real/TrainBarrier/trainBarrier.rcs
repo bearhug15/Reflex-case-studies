@@ -1,0 +1,85 @@
+// Level crossing: a train on the sensor lowers the gate and shows red; once it has gone the
+// gate is lifted again and the light turns back to white.
+//
+// Ported from TrainBarrier.rcs of the earlier case study, which had no requirements; these
+// are written for it. The old source declared no clock; 100 ms is assumed here.
+//
+//   R1  the gate is never driven up and down at once
+//   R2  the crossing never shows white and red at once
+//   R3  while a train is on the sensor the light is red - from the first cycle on: the
+//       initial state reads the sensor before the controller has run
+//   R4  the gate is never lifted while a train is on the sensor
+//   R5  a train arriving at an open crossing starts the gate down at once
+//
+//[invariant: !(up && down)]
+//[invariant: !(LED_WHITE && LED_RED)]
+//[invariant: previously(true) && on_sensor ==> LED_RED]
+//[invariant: on_sensor ==> !up]
+//[invariant: previously(in(Control, openned)) && on_sensor ==> down]
+program TrainBarrier {
+	clock 100;
+
+	import IO {
+		register inp
+		register out
+	}
+
+	node Main { clock 100; }
+
+	bool on_sensor as (read = inp, bit = 0);
+	bool gate_up as (read = inp, bit = 1);
+	bool gate_down as (read = inp, bit = 2);
+
+	bool up as (read = out, write = out, bit = 0);
+	bool down as (read = out, write = out, bit = 1);
+	bool LED_WHITE as (read = out, write = out, bit = 2);
+	bool LED_RED as (read = out, write = out, bit = 3);
+
+	process Control :: node Main {
+		//[invariant: !up && !down && !LED_RED]
+		state openned {
+			LED_WHITE = true;
+
+			if (on_sensor) {
+				LED_WHITE = false;
+				LED_RED = true;
+				down = true;
+				set state closing;
+			}
+		}
+
+		//[invariant: !up && down && !LED_WHITE && LED_RED]
+		state closing {
+			if (!on_sensor) {
+				down = false;
+				up = true;
+				set state openning;
+			} else if (gate_down) {
+				down = false;
+				set state closed;
+			}
+		}
+
+		//[invariant: !up && !down && !LED_WHITE && LED_RED]
+		state closed {
+			if (!on_sensor) {
+				up = true;
+				set state openning;
+			}
+		}
+
+		//[invariant: up && !down && !LED_WHITE && LED_RED]
+		state openning {
+			if (on_sensor) {
+				up = false;
+				down = true;
+				set state closing;
+			} else if (gate_up) {
+				LED_WHITE = true;
+				LED_RED = false;
+				up = false;
+				set state openned;
+			}
+		}
+	}
+}

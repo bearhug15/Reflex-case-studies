@@ -1,0 +1,76 @@
+// Pedestrian crossing light: red for at least ten seconds; a press of the button, during
+// or after that, turns it green five seconds later, and green lasts thirty seconds.
+// light = true is green, false is red.
+//
+// Ported from trafficLights.rx of the earlier case study. The requirements are R1-R5 of its
+// trafficLightsTheory.thy, with its cycle counts written as times (150 cycles = 15 s):
+//   R1  red, and the button pressed: green within 15 s
+//   R2  green just lit stays green for 30 s
+//   R3  green just lit turns red within 30 s
+//   R4  red just lit stays red until the button is pressed
+//   R5  red just lit stays red for 15 s
+// The constants green and red are renamed GREEN and RED: green is also a state.
+//
+//[invariant: within(previously(!light && !button) && button, T#15s, light)]
+//[invariant: stable(previously(!light) && light, T#30s, light)]
+//[invariant: within(previously(!light) && light, T#30s, !light)]
+//[invariant: during(previously(light) && !light, button, !light)]
+//[invariant: stable(previously(light) && !light, T#15s, !light)]
+program TrafficLights {
+	clock 100;
+
+	import IO {
+		register buttonPort
+		register lightPort
+	}
+
+	node Main { clock 100; }
+
+	bool button as (read = buttonPort, bit = 0);
+	bool light as (read = lightPort, write = lightPort, bit = 0);
+	bool bpressed;
+
+	const bool GREEN = true;
+	const bool RED = false;
+	const bool pressed = true;
+	const bool not_pressed = false;
+	const time minimal_red_time = 0t10s;
+	const time red_to_green = 0t5s;
+	const time green_time_limit = 0t30s;
+
+	process Controller :: node Main {
+		//[invariant: !light && time(Controller) <= T#10s]
+		state minimalRed {
+			if (button) {
+				bpressed = true;
+			}
+			timeout minimal_red_time {
+				set next state;
+			}
+		}
+
+		//[invariant: !light]
+		state redAfterMinimalRed {
+			if (bpressed || button) {
+				set next state;
+			}
+		}
+
+		//[invariant: !light && time(Controller) <= T#5s]
+		state redToGreen {
+			timeout red_to_green {
+				light = GREEN;
+				bpressed = false;
+				set next state;
+			}
+		}
+
+		//[invariant: light && !bpressed && time(Controller) <= T#30s]
+		state green {
+			timeout green_time_limit {
+				light = RED;
+				set state minimalRed;
+			}
+		}
+	}
+}

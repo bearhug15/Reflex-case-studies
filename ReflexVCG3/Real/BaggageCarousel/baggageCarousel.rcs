@@ -1,0 +1,66 @@
+// Baggage carousel: started by a button, it runs while passengers keep coming and stops
+// when it is overloaded, jammed, or nobody has been seen for thirty seconds.
+//
+// Ported from BaggageCarousel.rcs of the earlier case study, which had no requirements;
+// these are written for it. Three slips of the old source are fixed: the start button read
+// a misspelt port `iinp`, the stop condition assigned (`weight = HIGH || stuck = DETECTED`)
+// where it meant to compare, and TURN_ON / TURN_OFF were declared `time`.
+//
+//   R1  the belt never runs while it is overloaded or jammed
+//   R2  the belt starts only on the button, and only if it is neither overloaded nor jammed
+//   R3  a running belt has seen a passenger, or was started, within the last thirty seconds
+//
+//[invariant: (weight || stuck) ==> !engine]
+//[invariant: previously(!engine) && engine ==> startButton && !weight && !stuck]
+//[invariant: engine ==> cooldown(pSensor || previously(!engine), T#30s)]
+program BaggageCarousel {
+	clock 100;
+
+	import IO {
+		register inp
+		register out
+	}
+
+	node Main { clock 100; }
+
+	bool startButton as (read = inp, bit = 0);
+	bool pSensor as (read = inp, bit = 1);
+	bool weight as (read = inp, bit = 2);
+	bool stuck as (read = inp, bit = 3);
+
+	bool engine as (read = out, write = out, bit = 0);
+
+	const bool PRESSED = true;
+	const bool DETECTED = true;
+	const bool NOT_DETECTED = false;
+	const bool HIGH = true;
+	const bool LOW = false;
+	const bool TURN_ON = true;
+	const bool TURN_OFF = false;
+	const time IDLE_TIMEOUT = 0t30s;
+
+	process Carousel :: node Main {
+		//[invariant: !engine]
+		state turnedOff {
+			if (startButton == PRESSED && weight == LOW && stuck == NOT_DETECTED) {
+				engine = TURN_ON;
+				set next state;
+			}
+		}
+
+		//[invariant: engine]
+		//[invariant: time(Carousel) <= T#30s]
+		state turnedOn {
+			if (pSensor == DETECTED)
+				reset timer;
+			if (weight == HIGH || stuck == DETECTED) {
+				engine = TURN_OFF;
+				set state turnedOff;
+			}
+			timeout IDLE_TIMEOUT {
+				engine = TURN_OFF;
+				set state turnedOff;
+			}
+		}
+	}
+}

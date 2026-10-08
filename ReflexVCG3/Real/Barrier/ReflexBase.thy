@@ -1,0 +1,231 @@
+theory "ReflexBase"
+  imports Main HOL.Real
+begin
+
+type_synonym variable = string
+
+type_synonym process = string
+
+type_synonym pstate = string
+
+type_synonym field = string
+
+type_synonym index = nat
+
+datatype val =
+    ValBool bool
+  | ValInt int
+  | ValNat nat
+  | ValReal real
+  | ValStruct "field \<Rightarrow> val"
+  | ValArray "index \<Rightarrow> val"
+  | Nil
+
+(* Projections out of val.
+   A generated condition reads a variable with getVarVal and then works in the HOL type
+   that the Reflex type maps onto: signed integers to int, unsigned integers and time to
+   nat, bool to bool, float and double to real. These are the inverses of the value
+   constructors used for that.
+
+   They are total, and coerce between the numeric constructors rather than failing, so a
+   condition stays well-formed even where an earlier stage has not pinned a value's
+   constructor down. *)
+
+fun theBool :: "val \<Rightarrow> bool" where
+  "theBool (ValBool b) = b"
+| "theBool (ValInt i) = (i \<noteq> 0)"
+| "theBool (ValNat n) = (n \<noteq> 0)"
+| "theBool _ = False"
+
+fun theInt :: "val \<Rightarrow> int" where
+  "theInt (ValInt i) = i"
+| "theInt (ValNat n) = int n"
+| "theInt (ValBool b) = (if b then 1 else 0)"
+| "theInt _ = 0"
+
+fun theNat :: "val \<Rightarrow> nat" where
+  "theNat (ValNat n) = n"
+| "theNat (ValInt i) = nat i"
+| "theNat (ValBool b) = (if b then 1 else 0)"
+| "theNat _ = 0"
+
+fun theReal :: "val \<Rightarrow> real" where
+  "theReal (ValReal r) = r"
+| "theReal (ValInt i) = real_of_int i"
+| "theReal (ValNat n) = real n"
+| "theReal _ = 0"
+
+datatype access =
+  AccessField field
+  | AccessIndex index
+
+datatype state =
+    emptyState
+  | setVar state variable val
+  | toEnv state 
+  | setPstate state process pstate 
+  | reset state process
+
+
+
+primrec defaultVal :: "val \<Rightarrow> val" where 
+  "defaultVal (ValBool _) = ValBool False" 
+| "defaultVal (ValInt _) = ValInt 0" 
+| "defaultVal (ValNat _) = ValNat 0" 
+| "defaultVal (ValReal _) = ValReal 0.0" 
+| "defaultVal (ValStruct _) = ValStruct (\<lambda>_. Nil)" 
+| "defaultVal (ValArray _) = ValArray (\<lambda>_. Nil)"
+| "defaultVal Nil = Nil"
+
+fun applyAccess :: "val \<Rightarrow> access list \<Rightarrow> val" where
+  "applyAccess v [] = v"
+| "applyAccess (ValStruct f) (AccessField fld # rest) = 
+    applyAccess (f fld) rest"
+| "applyAccess (ValArray a) (AccessIndex i # rest) =
+    applyAccess (a i) rest"
+| "applyAccess v _ = defaultVal v"
+
+primrec getVarVal :: "state \<Rightarrow> variable \<Rightarrow> access list \<Rightarrow> val" where
+  "getVarVal emptyState _ _ = Nil"
+| "getVarVal (setVar s v val) var accs = 
+    (if v = var then applyAccess val accs
+      else getVarVal s var accs)"
+| "getVarVal (toEnv s) var accs = getVarVal s var accs"
+| "getVarVal (setPstate s _ _) var accs = getVarVal s var accs"
+| "getVarVal (reset s _) var accs = getVarVal s var accs"
+
+fun updValPath :: "val \<Rightarrow> access list \<Rightarrow> val \<Rightarrow> val" where
+  "updValPath v [] newVal = newVal"  
+| "updValPath (ValStruct f) (AccessField fld # rest) newVal =
+     ValStruct (\<lambda>fld'. if fld' = fld then updValPath (f fld) rest newVal
+                else f fld')" 
+| "updValPath (ValArray a) (AccessIndex i # rest) newVal =
+     ValArray (\<lambda>j. if j = i then updValPath (a i) rest newVal
+                else a j)" 
+| "updValPath _ (_ # _) newVal = newVal"
+
+definition setVarVal :: "state \<Rightarrow> variable \<Rightarrow> access list \<Rightarrow> val \<Rightarrow> state" where
+  "setVarVal s v acc newVal =
+     setVar s v (updValPath (getVarVal s v []) acc newVal)"
+
+
+lemma simple_get_set:
+  "getVarVal (setVarVal s var [] val) var [] = val"
+  by (simp add: setVarVal_def )
+
+(* Reading a scalar back in the HOL type it was written at. These are the shapes
+   generated verification conditions produce most often, so they are simp rules. *)
+
+lemma theBool_get_after_set [simp]:
+  "theBool (getVarVal (setVarVal s var [] (ValBool x)) var []) = x"
+  by (simp add: setVarVal_def)
+
+lemma theInt_get_after_set [simp]:
+  "theInt (getVarVal (setVarVal s var [] (ValInt x)) var []) = x"
+  by (simp add: setVarVal_def)
+
+lemma theNat_get_after_set [simp]:
+  "theNat (getVarVal (setVarVal s var [] (ValNat x)) var []) = x"
+  by (simp add: setVarVal_def)
+
+lemma theReal_get_after_set [simp]:
+  "theReal (getVarVal (setVarVal s var [] (ValReal x)) var []) = x"
+  by (simp add: setVarVal_def)
+
+fun valid_access_path :: "val \<Rightarrow> access list \<Rightarrow> bool" where
+  "valid_access_path _ [] = True" |
+  "valid_access_path (ValStruct f) (AccessField fld # rest) = valid_access_path (f fld) rest" |
+  "valid_access_path (ValArray a) (AccessIndex i # rest) = valid_access_path (a i) rest" |
+  "valid_access_path _ (_ # _) = False"
+
+lemma apply_update_ident:
+  assumes "valid_access_path v acc"
+  shows   "applyAccess (updValPath v acc val) acc = val"
+  using assms
+  apply (induction acc arbitrary: v)
+   apply simp
+  using valid_access_path.elims(2) by force
+
+lemma get_after_set:
+  assumes "valid_access_path (getVarVal s var []) acc"
+  shows   "getVarVal (setVarVal s var acc val) var acc = val"
+  unfolding setVarVal_def
+  apply simp
+  apply (rule apply_update_ident)
+  apply (rule assms)
+  done
+
+
+primrec getPstate:: "state \<Rightarrow> process \<Rightarrow> pstate" where
+"getPstate emptyState _ = ''stop''"
+| "getPstate (toEnv s) p = getPstate s p" 
+| "getPstate (setVar s _ _) p = getPstate s p" 
+| "getPstate (setPstate s p1 q) p =
+  (if p=p1 then q else (getPstate s p))" 
+| "getPstate (reset s _) p = getPstate s p"
+
+primrec substate:: "state \<Rightarrow> state \<Rightarrow> bool" where
+"substate s emptyState =
+ (if s = emptyState then True else False)" 
+| "substate s (toEnv s1) =
+  (if s = toEnv s1 then True else substate s s1)" 
+| "substate s (setVar s1 v u) = 
+  (if s = setVar s1 v u then True else substate s s1)" 
+| "substate s (setPstate s1 p q) =
+  (if s = setPstate s1 p q then True else substate s s1)" 
+| "substate s (reset s1 p) =
+  (if s = reset s1 p then True else substate s s1)"
+
+primrec toEnvNum:: "state \<Rightarrow>state \<Rightarrow> nat" where 
+"toEnvNum s emptyState = 0" 
+| "toEnvNum s (toEnv s1) = 
+  (if s = toEnv s1 then 0 else toEnvNum s s1 + 1)" 
+| "toEnvNum s (setVar s1 v u) =
+  (if s = setVar s1 v u then 0 else toEnvNum s s1)" 
+| "toEnvNum s (setPstate s1 p q) = 
+  (if s = setPstate s1 p q then 0 else toEnvNum s s1)" 
+| "toEnvNum s (reset s1 p) =
+  (if s = reset s1 p then 0 else toEnvNum s s1)"
+
+primrec toEnvP::"state \<Rightarrow> bool" where
+"toEnvP (toEnv _) = True" 
+| "toEnvP emptyState = False"
+| "toEnvP (setVar _ _ _) = False"
+| "toEnvP (setPstate _ _ _) = False"
+| "toEnvP (reset _ _ ) = False"
+
+(*
+primrec toEnvP::"state \<Rightarrow> bool" where
+"toEnvP (toEnv _) = True" 
+| "toEnvP _ = False"
+*)
+
+primrec predEnv:: "state \<Rightarrow> state" where
+"predEnv emptyState = emptyState" 
+| "predEnv (toEnv s) =
+  (if (toEnvP s) then s else predEnv s)" 
+| "predEnv (setVar s _ _) = 
+  (if (toEnvP s) then s else predEnv s)" 
+| "predEnv (setPstate s _ _) = 
+  (if (toEnvP s) then s else predEnv s)" 
+| "predEnv (reset s _) = 
+  (if (toEnvP s) then s else predEnv s)"
+
+primrec shiftEnv:: "state \<Rightarrow> nat \<Rightarrow> state" where
+"shiftEnv s 0 = s" |
+"shiftEnv s (Suc n) = predEnv (shiftEnv s n)"
+
+(* The state just before a process last changed state: walking back from s, the first
+   setPstate that moved the process to a state it was not already in, and the state it was
+   applied to. emptyState when nothing ever moved it. The transition conditions among the
+   extra invariants say what held there. *)
+primrec prevProcState:: "state \<Rightarrow> process \<Rightarrow> state" where
+"prevProcState emptyState _ = emptyState"
+| "prevProcState (toEnv s) p = prevProcState s p"
+| "prevProcState (setVar s _ _) p = prevProcState s p"
+| "prevProcState (setPstate s p1 q) p =
+  (if p = p1 \<and> getPstate s p \<noteq> q then s else prevProcState s p)"
+| "prevProcState (reset s _) p = prevProcState s p"
+
+
+end

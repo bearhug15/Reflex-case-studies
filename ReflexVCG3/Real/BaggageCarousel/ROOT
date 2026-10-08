@@ -1,0 +1,18 @@
+session BaggageCarousel = HOL +
+  options [document = false, quick_and_dirty]
+  theories
+    ReflexBase ReflexLemmas ReflexPatterns
+    BaggageCarouselTheory LoopInvariants Requirements
+    ExtraInvariants
+    BaggageCarousel_VC0
+    BaggageCarousel_VC1
+    BaggageCarousel_VC10
+    BaggageCarousel_VC11
+    BaggageCarousel_VC2
+    BaggageCarousel_VC3
+    BaggageCarousel_VC4
+    BaggageCarousel_VC5
+    BaggageCarousel_VC6
+    BaggageCarousel_VC7
+    BaggageCarousel_VC8
+    BaggageCarousel_VC9

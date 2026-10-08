@@ -1,0 +1,114 @@
+PROGRAM SmartLighting
+VAR_INPUT
+  motion: BOOL;
+  light: BOOL;
+END_VAR
+
+VAR_OUTPUT
+  dayLight: BOOL;
+  dimLight: BOOL;
+  timeOfDay: INT;
+END_VAR
+
+VAR CONSTANT
+  TURNED_ON: BOOL := TRUE;
+  TURNED_OFF: BOOL := FALSE;
+  LOW: BOOL := FALSE;
+  NIGHT: INT := 0;
+  EARLY_MORNING: INT := 1;
+  MORNING_LIGHTING : INT := 2;
+  DAY: INT := 3;
+  EVENING: INT := 4;
+  LIGHTING_TIME: TIME := T#5m;
+  MORNING_LIGHTING_TIME: TIME := T#30m;
+END_VAR
+
+VAR
+  turnedOn: BOOL;
+END_VAR
+
+PROCESS Init
+  STATE init
+    START PROCESS Lighting;
+    STOP;
+  END_STATE
+END_PROCESS
+
+PROCESS Motion
+  STATE noMovement
+    IF motion AND light = LOW THEN
+      turnedOn := TRUE;
+      SET NEXT;
+    END_IF
+  END_STATE
+  
+  STATE movement
+    IF motion THEN
+      RESET TIMER;
+    END_IF
+    TIMEOUT LIGHTING_TIME THEN
+      turnedOn := FALSE;
+      SET STATE noMovement;
+    END_TIMEOUT
+  END_STATE
+END_PROCESS
+
+PROCESS Lighting
+  STATE night
+    TIMEOUT T#6h THEN
+      timeOfDay := EARLY_MORNING;
+      START PROCESS Motion;
+      SET NEXT;
+    END_TIMEOUT
+  END_STATE
+  
+  STATE earlyMorning
+    IF turnedOn THEN
+      dimLight := TURNED_ON;
+    ELSE
+      dimLight := TURNED_OFF;
+    END_IF
+    TIMEOUT T#30m THEN
+      timeOfDay := MORNING_LIGHTING;
+      dimLight := TURNED_ON;
+      SET NEXT;
+    END_TIMEOUT
+  END_STATE
+  
+  STATE morningLighting
+    TIMEOUT MORNING_LIGHTING_TIME THEN
+      timeOfDay := DAY;
+      SET NEXT;
+    END_TIMEOUT
+  END_STATE
+  
+  STATE morningOrDay
+    dimLight := TURNED_OFF;
+    IF turnedOn THEN
+      dayLight := TURNED_ON;
+    ELSE
+      dayLight := TURNED_OFF;
+    END_IF
+    TIMEOUT T#11h30m THEN
+      timeOfDay := EVENING;
+      SET NEXT;
+    END_TIMEOUT
+  END_STATE
+  
+  STATE evening
+    dayLight := TURNED_OFF;
+    IF turnedOn THEN
+      dimLight := TURNED_ON;
+    ELSE
+      dimLight := TURNED_OFF;
+    END_IF
+    TIMEOUT T#6h THEN
+      dimLight := TURNED_OFF;
+      timeOfDay := NIGHT;
+      turnedOn := FALSE;
+      STOP PROCESS Motion;
+      SET STATE night;
+    END_TIMEOUT
+  END_STATE
+END_PROCESS
+END_PROGRAM

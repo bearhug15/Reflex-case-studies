@@ -1,0 +1,139 @@
+// Bottle filling line: fill the tank, sterilise it with steam for a minute, then keep it
+// warm while bottles are brought up one by one and filled. When the tank runs dry the line
+// starts over.
+//
+// Ported from BottleFilling.rcs of the earlier case study (not the BottleFillingOrigin
+// variant). R1 is the requirement of BottleFillingOrigin/Requirements.thy; R2 and R3 are
+// written for this port.
+//   R1  the tank is never filled while steam is on
+//   R2  a bottle is never filled while the conveyor moves
+//   R3  no bottle is filled before the tank has been sterilised
+//
+//[invariant: oFillTank ==> !oSteam]
+//[invariant: !(oFillBottle && oConveyor)]
+//[invariant: oFillBottle ==> once(in(ForceSterilization, sterilizationFor1min))]
+program BottleFilling {
+	clock 100;
+
+	import IO {
+		register inp
+		register out
+	}
+
+	node Main { clock 100; }
+
+	bool iLowLevel as (read = inp, bit = 0);
+	bool iHighLevel as (read = inp, bit = 1);
+	bool iLowTemp as (read = inp, bit = 2);
+	bool iHighTemp as (read = inp, bit = 3);
+	bool iBottleLevel as (read = inp, bit = 4);
+	bool iBottlePosition as (read = inp, bit = 5);
+
+	bool oFillTank as (read = out, write = out, bit = 0);
+	bool oSteam as (read = out, write = out, bit = 1);
+	bool oFillBottle as (read = out, write = out, bit = 2);
+	bool oConveyor as (read = out, write = out, bit = 3);
+
+	const bool TURNED_ON = true;
+	const bool TURNED_OFF = false;
+
+	process Initialization :: node Main {
+		//[invariant: !oFillBottle]
+		state begin {
+			oFillTank = TURNED_ON;
+			oSteam = TURNED_OFF;
+
+			if (iHighLevel) {
+				oFillTank = TURNED_OFF;
+				start ForceSterilization;
+				set next state;
+			}
+		}
+
+		//[invariant: !oFillTank && !oFillBottle]
+		state waitForSterilization {
+			if (process ForceSterilization in state inactive) {
+				start MainLoop;
+				set next state;
+			}
+		}
+
+		//[invariant: !oFillTank]
+		state keepSterilization {
+			if (!iLowTemp) {
+				oSteam = TURNED_ON;
+			} else if (iHighTemp) {
+				oSteam = TURNED_OFF;
+			}
+		}
+	}
+
+	process MainLoop :: node Main {
+		//[invariant: !oFillBottle]
+		state begin {
+			start NextBottle;
+			set next state;
+		}
+
+		//[invariant: !oFillBottle]
+		state waitForNextBottle {
+			if (process NextBottle in state inactive) {
+				set next state;
+			}
+		}
+
+		//[invariant: !oConveyor]
+		state waitForFilling {
+			oFillBottle = TURNED_ON;
+
+			if (iBottleLevel) {
+				oFillBottle = TURNED_OFF;
+
+				if (!iLowLevel) {
+					start Initialization;
+					stop;
+				} else {
+					restart;
+				}
+			}
+		}
+	}
+
+	process ForceSterilization :: node Main {
+		//[invariant: !oFillTank]
+		state heatUp {
+			oSteam = TURNED_ON;
+
+			if (iHighTemp) {
+				set next state;
+			}
+		}
+
+		//[invariant: !oFillTank]
+		state sterilizationFor1min {
+			timeout 0t1m {
+				oSteam = TURNED_OFF;
+				stop;
+			}
+		}
+	}
+
+	process NextBottle :: node Main {
+		//[invariant: !oFillBottle]
+		state begin {
+			oConveyor = TURNED_ON;
+
+			if (!iBottlePosition) {
+				set next state;
+			}
+		}
+
+		//[invariant: !oFillBottle]
+		state waitBottlePosition {
+			if (iBottlePosition) {
+				oConveyor = TURNED_OFF;
+				stop;
+			}
+		}
+	}
+}

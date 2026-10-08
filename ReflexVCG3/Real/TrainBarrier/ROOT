@@ -1,0 +1,17 @@
+session TrainBarrier = HOL +
+  options [document = false, quick_and_dirty]
+  theories
+    ReflexBase ReflexLemmas ReflexPatterns
+    TrainBarrierTheory LoopInvariants Requirements
+    ExtraInvariants
+    TrainBarrier_VC0
+    TrainBarrier_VC1
+    TrainBarrier_VC10
+    TrainBarrier_VC2
+    TrainBarrier_VC3
+    TrainBarrier_VC4
+    TrainBarrier_VC5
+    TrainBarrier_VC6
+    TrainBarrier_VC7
+    TrainBarrier_VC8
+    TrainBarrier_VC9

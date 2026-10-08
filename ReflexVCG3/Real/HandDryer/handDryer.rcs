@@ -1,0 +1,54 @@
+// Hand dryer: blows while hands are held under it, and stops two seconds after they leave.
+//
+// Requirements, from HandDryerTheory.thy of the earlier case study:
+//   R1  hands that appear under a dryer that is off turn it on at once
+//   R2  a dryer that is off stays off while no hands are under it
+//   R3  hands taken away leave the dryer on for at most two seconds, unless they come back
+//   R4  a dryer that is on stays on while hands are under it
+// The fifth annotation is not a requirement: it is what R3 needs to be inductive - since hands
+// left, the dryer has been in Work and its timer has counted every cycle. The old R5 (the
+// dryer is off at some point in every hour) is not carried over; it is false of this program,
+// which keeps blowing for as long as hands stay under it.
+//
+//[invariant: previously(!hands && !dryer) && hands ==> dryer]
+//[invariant: previously(!dryer) && !hands ==> !dryer]
+//[invariant: within(previously(hands && dryer) && !hands, T#2s, !dryer || hands)]
+//[invariant: previously(dryer) && hands ==> dryer]
+//[invariant: during(previously(hands && dryer) && !hands, !dryer || hands, in(Dryer, Work) && !timer(time(Dryer) - T#100ms))]
+program HandDryer {
+	clock 100;
+
+	import IO {
+		register inp
+		register out
+	}
+
+	node Main { clock 100; }
+
+	bool hands as (read = inp, bit = 1);
+	bool dryer as (read = out, write = out, bit = 1);
+
+	const bool ON = true;
+	const bool OFF = false;
+	const time TIMEOUT = 0t2s;
+
+	process Dryer :: node Main {
+		//[invariant: !dryer]
+		state Wait {
+			if (hands) {
+				dryer = ON;
+				set state Work;
+			}
+		}
+
+		//[invariant: dryer]
+		//[invariant: hands ==> time(Dryer) == T#100ms]
+		state Work {
+			if (hands) reset timer;
+			timeout (TIMEOUT) {
+				dryer = OFF;
+				set state Wait;
+			}
+		}
+	}
+}

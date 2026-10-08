@@ -1,0 +1,12 @@
+session HandDryer = HOL +
+  options [document = false, quick_and_dirty]
+  theories
+    ReflexBase ReflexLemmas ReflexPatterns
+    HandDryerTheory LoopInvariants Requirements
+    ExtraInvariants
+    HandDryer_VC0
+    HandDryer_VC1
+    HandDryer_VC2
+    HandDryer_VC3
+    HandDryer_VC4
+    HandDryer_VC5

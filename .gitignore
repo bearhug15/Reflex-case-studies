@@ -1,1 +1,4 @@
-VendingMachine/
+*.thy~
+ReflexVCG3\Real\README.md
+ReflexVCG3\Real\*\ROOT
+ReflexVCG3\Real\GasSeparator

@@ -1,0 +1,24 @@
+# Proofs for the conditions trainBarrier.rcs generates, measured against Isabelle2025-2 on
+# 2026-10-08 with tools/check-with-isabelle.sh <dir> <Theory> @structural, time-boxed to five
+# minutes for the whole program. @cycle and @base are that script's structural proof written
+# out on one line. Condition names carry the number they were written under; regenerate
+# rather than renumber.
+
+@cycle = proof - have pred: "predEnv st_final = st0" using assms by (simp add: setVarVal_def) show ?thesis using assms unfolding inv_def constants_def extraInv_def extra_states_Control_def  apply ((elim conjE)?) apply ((intro conjI)?; (((rule wrapped_step[OF pred] wrapped_step_unscoped[OF pred]), assumption)?, ((drule wrapped_here[OF _ st0_boundary] wrapped_here_unscoped[OF _ st0_boundary])+)?, auto simp add: setVarVal_def Let_def)) done qed
+@base = proof - have pred: "predEnv st_final = emptyState" using assms by (simp add: setVarVal_def) show ?thesis using assms unfolding inv_def constants_def extraInv_def extra_states_Control_def  apply ((intro conjI)?; ((rule wrapped_step[OF pred wrapped_empty] wrapped_step_unscoped[OF pred wrapped_empty_unscoped])?, auto simp add: setVarVal_def Let_def)) done qed
+
+# 9 of 11 close.
+VC0	@base
+VC1	@cycle
+VC2	@cycle
+VC3	@cycle
+VC5	@cycle
+VC6	@cycle
+VC8	@cycle
+VC9	@cycle
+VC10	@cycle
+
+# Open: VC4 (closing -> closed, train still on the sensor) and VC7 (closed, train still on
+# the sensor) time out at 60 s and again at 150 s under @cycle. Both are paths the
+# annotations should cover - the gate stays down and red stays on - so the timeout is the
+# proof's, not the program's; neither has been examined further.

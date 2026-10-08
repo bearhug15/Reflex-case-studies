@@ -1,0 +1,163 @@
+program VendingMachine{
+clock 100;
+	input inp 0x00 0x00 56;
+	output out 0x00 0x07 56;
+	
+	bool button1 = inp[0];
+	bool button2 = inp[1];
+	int8 deposited = inp[2];
+	bool given1 = inp[3];
+	bool given2 = inp[4];
+	bool paidOut = inp[5];
+	bool cancel = inp[6];
+	
+	bool product1 = out[0];
+	bool product2 = out[1];
+	bool lockChanger = out[2];
+	int8 change = out[3];
+	int8 mode = out[4];
+	int8 credit = out[5];
+	bool dispense = out[6];
+	
+	const bool PRESSED = true;
+	const int8 IDLE = 0;
+	const int8 CHOICE = 1;
+	const int8 ADD_MONEY = 2;
+	const int8 DELIVERY = 3;
+	const int8 PAYING_OUT =4;
+	const int8 PRICE1 = 10;
+	const int8 PRICE2 = 50;
+	const time DELIVERY_TIME_LIMIT = 0t3s; 
+	
+	bool given;
+	
+	process Init{
+		state init{
+			start PaymentAcceptance;
+			start Controller;
+			stop;
+		}
+	}
+	
+	process PaymentAcceptance{
+		state accepting{
+			credit = credit + deposited;
+		}
+	}
+	
+	process Controller{
+		state waiting {
+			if (credit>0){
+				lockChanger = true;
+				stop PaymentAcceptance;
+				if (cancel){
+					mode = PAYING_OUT;
+					set state payOut;
+				}else{
+					mode = CHOICE;
+					set next state;
+				}
+			}
+		}
+		state choice{
+			if (cancel){
+				mode = PAYING_OUT;
+				set state payOut;
+			} else if (button1 = PRESSED){
+				start Sale1;
+				set state sale;
+			} else if (button2 = PRESSED){
+				start Sale2;
+				set state sale;
+			}
+		}
+		state sale{
+			if (process Sale1 in state inactive && process Sale2 in state inactive){
+				if (given) {
+					mode = PAYING_OUT;
+					set next state;
+				}else{
+					mode = CHOICE;
+					set next state;
+				}
+			}
+		}
+		state payOut{
+			dispense = true;
+			change = credit;
+			if (paidOut){
+				dispense = false;
+				change = 0;
+				credit = 0;
+				mode = IDLE;
+				lockChanger = false;
+				start PaymentAcceptance;
+				set state waiting;
+			}
+		}
+		
+	}
+	process Sale1{
+			state addMoney {
+				lockChanger = false;
+				start PaymentAcceptance;
+				mode = ADD_MONEY;
+				if (cancel || credit >= PRICE1){
+					lockChanger = true;
+					stop PaymentAcceptance;
+					if (cancel){
+						stop;
+					}else{
+						mode = DELIVERY;
+						product1 = true;
+						set next state;
+					}
+				}
+			}
+			state delivery{
+				if (given1){
+					product1 = false;
+					given = true;
+					credit = credit - PRICE1;
+					stop;
+				}
+				timeout DELIVERY_TIME_LIMIT{
+					product1 = false;
+					given = false;
+					stop;
+				}
+			}
+		}
+		process Sale2{
+			state addMoney {
+				lockChanger = false;
+				start PaymentAcceptance;
+				mode = ADD_MONEY;
+				if (cancel || credit >= PRICE2){
+					lockChanger = true;
+					stop PaymentAcceptance;
+					if (cancel){
+						stop;
+					}else{
+						mode = DELIVERY;
+						product2 = true;
+						set next state;
+					}
+				}
+			}
+			state delivery{
+				if (given2){
+					product2 = false;
+					given = true;
+					credit = credit - PRICE2;
+					stop;
+				}
+				timeout DELIVERY_TIME_LIMIT{
+					product2 = false;
+					given = false;
+					stop;
+				}
+			}
+		}
+	
+}

@@ -1,0 +1,97 @@
+// Car park barrier: a car in front starts the Opening process, which lifts the arm, shows
+// green, and lowers the arm again ten minutes after the last car passed under it.
+//
+// Ported from Barrier.rx of the earlier case study, which had no requirements; these are
+// written for it.
+//
+//   R1  the arm is never driven up and down at once
+//   R2  the lights never show green and red at once
+//   R3  the arm is not lowered onto a car beneath it
+//   R4  green is shown only while the barrier stands open
+//   R5  a car under the open barrier keeps it open
+//   R6  the arm is driven down only while the barrier is closing
+//
+//[invariant: !(up && down)]
+//[invariant: !(green && red)]
+//[invariant: peCarUnder ==> !down]
+//[invariant: green ==> in(Opening, open)]
+//[invariant: previously(in(Opening, open)) && peCarUnder ==> in(Opening, open)]
+//[invariant: down ==> in(Opening, closing)]
+program Barrier {
+	clock 100;
+
+	import IO {
+		register inp
+		register out
+	}
+
+	node Main { clock 100; }
+
+	bool carInFront as (read = inp, bit = 0);
+	bool peCarUnder as (read = inp, bit = 1);
+	bool opened as (read = inp, bit = 2);
+	bool closed as (read = inp, bit = 3);
+
+	bool up as (read = out, write = out, bit = 0);
+	bool down as (read = out, write = out, bit = 1);
+	bool green as (read = out, write = out, bit = 2);
+	bool red as (read = out, write = out, bit = 3);
+
+	const time open_time = 0t10m;
+
+	process CarController :: node Main {
+		state waitingForCar {
+			if (carInFront) {
+				start Opening;
+				set next state;
+			}
+		}
+
+		state waitingForCarPassing {
+			if (!carInFront) {
+				set state waitingForCar;
+			}
+		}
+	}
+
+	process Opening :: node Main {
+		//[invariant: !down]
+		state opening {
+			up = true;
+			down = false;
+			if (opened) {
+				up = false;
+				red = false;
+				green = true;
+				set next state;
+			}
+		}
+
+		//[invariant: !up && !down && green && !red]
+		state open {
+			if (peCarUnder) {
+				reset timer;
+			}
+			timeout open_time {
+				down = true;
+				green = false;
+				red = true;
+				set next state;
+			}
+		}
+
+		//[invariant: !up && !green && red]
+		state closing {
+			if (closed) {
+				down = false;
+				stop;
+			} else if (peCarUnder) {
+				down = false;
+				if (!opened) {
+					up = true;
+				}
+				set state opening;
+			}
+		}
+	}
+}

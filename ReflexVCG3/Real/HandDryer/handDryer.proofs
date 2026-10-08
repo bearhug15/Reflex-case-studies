@@ -1,0 +1,18 @@
+# Proofs for the conditions handDryer.rcs generates, measured against Isabelle2025-2 on
+# 2026-10-08 with tools/check-with-isabelle.sh <dir> <Theory> @structural, time-boxed to five
+# minutes for the whole program. @cycle and @base are that script's structural proof written
+# out on one line. Condition names carry the number they were written under; regenerate
+# rather than renumber.
+
+@cycle = proof - have pred: "predEnv st_final = st0" using assms by (simp add: setVarVal_def) show ?thesis using assms unfolding inv_def constants_def extraInv_def extra_states_Dryer_def  apply ((elim conjE)?) apply ((intro conjI)?; (((rule wrapped_step[OF pred] wrapped_step_unscoped[OF pred]), assumption)?, ((drule wrapped_here[OF _ st0_boundary] wrapped_here_unscoped[OF _ st0_boundary])+)?, auto simp add: setVarVal_def Let_def)) done qed
+@base = proof - have pred: "predEnv st_final = emptyState" using assms by (simp add: setVarVal_def) show ?thesis using assms unfolding inv_def constants_def extraInv_def extra_states_Dryer_def  apply ((intro conjI)?; ((rule wrapped_step[OF pred wrapped_empty] wrapped_step_unscoped[OF pred wrapped_empty_unscoped])?, auto simp add: setVarVal_def Let_def)) done qed
+
+# 2 of 6 close.
+VC0	@base
+VC3	@cycle
+
+# Open: VC1, VC2, VC4, VC5 time out at 90 s. Each must carry R3 (a `within`) and the
+# auxiliary `during` across the cycle, and @cycle's auto does not find the instantiations.
+# The argument is written out in the README: a window opened at or before st0 in which
+# neither the dryer stopped nor hands came back extends to st_final by one cycle, and the
+# auxiliary invariant bounds its length by the Work timer, which the timeout caps.
